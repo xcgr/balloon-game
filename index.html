@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Baloncuk Patlatma Oyunu</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at 50% 25%, #0f172a 0%, #060914 100%);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Arka plan siber ızgara efekti */
+    .bg-grid {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Glassmorphism Menü Paneli */
+    .glass {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    header {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    .hud-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 16px;
+      border-radius: 16px;
+      border-color: rgba(34, 211, 238, 0.25);
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      display: block;
+      line-height: 1.2;
+    }
+
+    .stat-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .score-txt { color: #38bdf8; }
+    .combo-txt { color: #f59e0b; font-size: 18px; }
+
+    .divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(148, 163, 184, 0.25);
+    }
+
+    /* Kritik Yoğunluk Çubuğu (50 Sınırı) */
+    .gauge-card {
+      flex: 1;
+      max-width: 280px;
+      padding: 8px 14px;
+      border-radius: 16px;
+    }
+
+    .gauge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .gauge-track {
+      width: 100%;
+      height: 9px;
+      background: #020617;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 1px;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981 0%, #eab308 65%, #f43f5e 100%);
+      transition: width 0.15s ease-out;
+    }
+
+    .danger-glow {
+      box-shadow: 0 0 16px rgba(244, 63, 94, 0.85);
+    }
+
+    /* Kontrol Butonları */
+    .controls-card {
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 16px;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .btn-icon:active {
+      transform: scale(0.92);
+    }
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Modal Pencereleri */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 420px;
+      padding: 28px 24px;
+      border-radius: 24px;
+      text-align: center;
+    }
+
+    .modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    .rules-list {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .rule-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #06b6d4, #2563eb);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .action-btn:hover {
+      box-shadow: 0 6px 26px rgba(6, 182, 212, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body class="bg-grid">
+
+  <!-- ÜST MENÜ & BİLGİ PANELİ (HUD) -->
+  <header id="topHud">
+    <!-- Skor ve Kombo -->
+    <div class="glass hud-card interactive">
+      <div>
+        <span class="stat-label">Skor</span>
+        <span id="scoreDisplay" class="stat-val score-txt">0</span>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <span class="stat-label">Kombo</span>
+        <span id="comboDisplay" class="stat-val combo-txt">x1</span>
+      </div>
+    </div>
+
+    <!-- Kritik Baloncuk Yoğunluğu Barı (Maksimum 50) -->
+    <div class="glass gauge-card interactive">
+      <div class="gauge-header">
+        <span>Kritik Yoğunluk</span>
+        <span id="bubbleCountText" style="font-family: monospace; font-weight: 700; color: #f8fafc;">0 / 50</span>
+      </div>
+      <div class="gauge-track">
+        <div id="dangerProgressBar" class="gauge-fill"></div>
+      </div>
+    </div>
+
+    <!-- Ses ve Duraklatma Kontrolleri -->
+    <div class="glass controls-card interactive">
+      <button id="soundBtn" class="btn-icon" title="Sesi Aç/Kapat">
+        <svg id="soundIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <svg id="soundIconOff" class="hidden" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <line x1="23" y1="9" x2="17" y2="15"></line>
+          <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>
+      </button>
+
+      <button id="pauseBtn" class="btn-icon" title="Duraklat/Devam Et">
+        <svg id="pauseIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="4" width="4" height="16"></rect>
+          <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- OYUN CANVAS'I -->
+  <main style="flex: 1; position: relative; width: 100%; height: 100%;">
+    <canvas id="gameCanvas"></canvas>
+  </main>
+
+  <!-- BAŞLANGIÇ MODALI -->
+  <div id="startModal" class="modal-overlay">
+    <div class="glass modal-box">
+      <h1 class="modal-title">Baloncuk Akını</h1>
+      <p class="modal-desc">
+        ~3 cm (114px) çapında beliren saydam neon baloncuklar yavaşça küçülür. 
+        Köşelerden esnekçe sekerler. Tamamen küçülmeden tıklayın!
+      </p>
+
+      <div class="rules-list">
+        <div class="rule-item">
+          <span class="dot" style="background: #38bdf8;"></span>
+          <span>Büyükken vurursanız daha yüksek puan alırsınız.</span>
+        </div>
+        <div class="rule-item">
+          <span class="dot" style="background: #f43f5e;"></span>
+          <span>Patlatılamayan baloncuk <strong>2 adet 3 cm baloncuğa bölünür!</strong></span>
+        </div>
+        <div class="rule-item">
+          <span class="dot" style="background: #f59e0b;"></span>
+          <span>Ekranda aynı anda <strong>50 baloncuk</strong> olursa oyun biter.</span>
+        </div>
+      </div>
+
+      <button id="startGameBtn" class="action-btn">Oyunu Başlat</button>
+    </div>
+  </div>
+
+  <!-- OYUN BİTTİ (GAME OVER) MODALI -->
+  <div id="gameOverModal" class="modal-overlay hidden">
+    <div class="glass modal-box" style="border-color: rgba(244, 63, 94, 0.4);">
+      <h2 class="modal-title" style="color: #f43f5e;">Aşırı Yüklenme!</h2>
+      <p class="modal-desc">Baloncuk sayısı 50 sınırına ulaştı ve sistem kilitlendi.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        <div style="background: rgba(2, 6, 23, 0.6); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
+          <span class="stat-label">Skor</span>
+          <span id="finalScore" class="stat-val score-txt" style="display:block; margin-top: 4px;">0</span>
+        </div>
+        <div style="background: rgba(2, 6, 23, 0.6); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
+          <span class="stat-label">En Yüksek</span>
+          <span id="bestScore" class="stat-val combo-txt" style="display:block; margin-top: 4px;">0</span>
+        </div>
+      </div>
+
+      <button id="restartGameBtn" class="action-btn">Tekrar Oyna</button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT OYUN MANTIĞI -->
+  <script>
+    // Saf Web Audio API Sentezleyici (Harici dosya gerekmez)
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playPop(pitch = 1.0) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          const freq = 460 * pitch;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 2.8, now + 0.08);
+
+          gain.gain.setValueAtTime(0.32, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.085);
+        } catch (e) {}
+      }
+
+      playSplit() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.19);
+        } catch (e) {}
+      }
+
+      playGameOver() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(50, now + 0.6);
+
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.65);
+        } catch (e) {}
+      }
+    }
+
+    const sound = new SoundFX();
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const topHud = document.getElementById('topHud');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const comboDisplay = document.getElementById('comboDisplay');
+    const dangerProgressBar = document.getElementById('dangerProgressBar');
+    const bubbleCountText = document.getElementById('bubbleCountText');
+    const startModal = document.getElementById('startModal');
+    const gameOverModal = document.getElementById('gameOverModal');
+    const finalScore = document.getElementById('finalScore');
+    const bestScore = document.getElementById('bestScore');
+    const soundBtn = document.getElementById('soundBtn');
+    const soundIconOn = document.getElementById('soundIconOn');
+    const soundIconOff = document.getElementById('soundIconOff');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const startGameBtn = document.getElementById('startGameBtn');
+    const restartGameBtn = document.getElementById('restartGameBtn');
+
+    // Standart 96 DPI ekranda 3 cm = ~114 piksel çap (57 piksel yarıçap)
+    const BUBBLE_RADIUS_3CM = 57;
+    const MAX_BUBBLES_LIMIT = 50;
+
+    let gameState = 'START'; // START, PLAYING, PAUSED, GAMEOVER
+    let score = 0;
+    let combo = 1;
+    let comboTimer = 0;
+    let highScore = parseInt(localStorage.getItem('bubble_high_score_limit50') || '0', 10);
+    let gameTime = 0;
+    let spawnTimer = 0;
+    let lastTime = 0;
+
+    let bubbles = [];
+    let particles = [];
+    let floatTexts = [];
+
+    const NEON_THEMES = [
+      { stroke: '#22d3ee', fill: 'rgba(34, 211, 238, 0.08)', glow: 'rgba(34, 211, 238, 0.7)' },
+      { stroke: '#a855f7', fill: 'rgba(168, 85, 247, 0.08)', glow: 'rgba(168, 85, 247, 0.7)' },
+      { stroke: '#f43f5e', fill: 'rgba(244, 63, 94, 0.08)', glow: 'rgba(244, 63, 94, 0.7)' },
+      { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.08)', glow: 'rgba(56, 189, 248, 0.7)' },
+      { stroke: '#fbbf24', fill: 'rgba(251, 191, 36, 0.08)', glow: 'rgba(251, 191, 36, 0.7)' }
+    ];
+
+    // Menünün arkasına girmeyi önleyen alt sınır hesaplayıcısı
+    function getSafeTopBoundary() {
+      if (!topHud) return 90;
+      const rect = topHud.getBoundingClientRect();
+      return Math.max(85, rect.bottom + 10);
+    }
+
+    class Bubble {
+      constructor(x, y, radius = BUBBLE_RADIUS_3CM, vx = null, vy = null) {
+        this.x = x;
+        this.y = y;
+        this.maxRadius = radius;
+        this.radius = radius;
+        this.color = NEON_THEMES[Math.floor(Math.random() * NEON_THEMES.length)];
+
+        // Yüzme/Sürüklenme Hızı
+        const speed = 40 + Math.random() * 40;
+        const angle = Math.random() * Math.PI * 2;
+        this.vx = vx !== null ? vx : Math.cos(angle) * speed;
+        this.vy = vy !== null ? vy : Math.sin(angle) * speed;
+
+        // Küçülme temposu: Zaman ilerledikçe kademeli artar
+        const difficulty = 1 + (gameTime / 60);
+        this.shrinkSpeed = 9.5 * difficulty;
+
+        // Sabun köpüğü parıltı yayının dönme açısı
+        this.shimmerAngle = Math.random() * Math.PI * 2;
+        this.shimmerRotSpeed = (Math.random() * 0.04) + 0.02;
+      }
+
+      update(dt) {
+        // Küçülme
+        this.radius -= this.shrinkSpeed * dt;
+        this.shimmerAngle += this.shimmerRotSpeed;
+
+        // Konum güncellemesi
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // ESNEK ÇARPIŞMA (ELASTIC BOUNCE & POSITION CLAMPING)
+        const safeTop = getSafeTopBoundary();
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        // Sol kenar sekmesi
+        if (this.x - this.radius < 0) {
+          this.x = this.radius;
+          this.vx = Math.abs(this.vx); // Sağa doğru sektir
+        }
+        // Sağ kenar sekmesi
+        else if (this.x + this.radius > w) {
+          this.x = w - this.radius;
+          this.vx = -Math.abs(this.vx); // Sola doğru sektir
+        }
+
+        // Üst HUD sınırından sekme (Asla menünün arkasına geçemez)
+        if (this.y - this.radius < safeTop) {
+          this.y = safeTop + this.radius;
+          this.vy = Math.abs(this.vy); // Aşağı doğru sektir
+        }
+        // Alt kenar sekmesi
+        else if (this.y + this.radius > h) {
+          this.y = h - this.radius;
+          this.vy = -Math.abs(this.vy); // Yukarı doğru sektir
+        }
+
+        // Küçülüp tükenme eşiği
+        if (this.radius <= 3.5) {
+          return 'SPLIT';
+        }
+        return 'ALIVE';
+      }
+
+      draw(ctx) {
+        if (this.radius <= 0) return;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+
+        // Saydam iç sabun gövdesi
+        ctx.fillStyle = this.color.fill;
+        ctx.fill();
+
+        // 1-2 mm kalınlıkta parlak neon cidar çizgisi
+        ctx.lineWidth = Math.max(2, this.radius * 0.07);
+        ctx.strokeStyle = this.color.stroke;
+        ctx.shadowColor = this.color.glow;
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+
+        // Sabun köpüğü parlak yansıma çizgisi
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        const start = this.shimmerAngle;
+        const end = start + Math.PI * 0.42;
+        ctx.arc(this.x, this.y, Math.max(1, this.radius - 3), start, end);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 2.0;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 120 + 40;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.decay = Math.random() * 2.5 + 2.0;
+        this.size = Math.random() * 3 + 1.5;
+      }
+
+      update(dt) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.alpha -= this.decay * dt;
+        return this.alpha > 0;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class FloatingText {
+      constructor(x, y, text, color) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.alpha = 1;
+      }
+
+      update(dt) {
+        this.y -= 36 * dt;
+        this.alpha -= 1.4 * dt;
+        return this.alpha > 0;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.font = 'bold 15px monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 6;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+    }
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function spawnBubble() {
+      const r = BUBBLE_RADIUS_3CM; // 57px (3 cm)
+      const safeTop = getSafeTopBoundary() + r + 5;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      const availHeight = Math.max(100, h - safeTop - r - 10);
+      const availWidth = Math.max(100, w - r * 2 - 20);
+
+      const x = r + 10 + Math.random() * availWidth;
+      const y = safeTop + Math.random() * availHeight;
+
+      bubbles.push(new Bubble(x, y, BUBBLE_RADIUS_3CM));
+    }
+
+    function splitBubble(parent) {
+      const angle = Math.random() * Math.PI * 2;
+      const launchSpeed = 80 + Math.random() * 40;
+
+      // İstenen kural: Bölünen yeni baloncuklar da TAM 3 CM (57px yarıçap) başlar
+      const b1 = new Bubble(
+        parent.x + Math.cos(angle) * 16,
+        parent.y + Math.sin(angle) * 16,
+        BUBBLE_RADIUS_3CM,
+        Math.cos(angle) * launchSpeed,
+        Math.sin(angle) * launchSpeed
+      );
+
+      const b2 = new Bubble(
+        parent.x - Math.cos(angle) * 16,
+        parent.y - Math.sin(angle) * 16,
+        BUBBLE_RADIUS_3CM,
+        -Math.cos(angle) * launchSpeed,
+        -Math.sin(angle) * launchSpeed
+      );
+
+      bubbles.push(b1, b2);
+
+      for (let i = 0; i < 8; i++) {
+        particles.push(new Particle(parent.x, parent.y, parent.color.stroke));
+      }
+
+      sound.playSplit();
+      combo = 1; // Zamanında vurulamadığı için kombo sıfırlanır
+      updateUI();
+    }
+
+    function popBubble(index) {
+      const b = bubbles[index];
+      sound.playPop(1.0 + Math.min(combo * 0.05, 1.4));
+
+      // Baloncuk ne kadar büyükken patlatılırsa o kadar yüksek puan
+      const sizeRatio = b.radius / b.maxRadius;
+      const basePoints = Math.round(50 + (sizeRatio * 100)); // 50 - 150 puan
+      const earned = basePoints * combo;
+
+      score += earned;
+      combo++;
+      comboTimer = 2.2;
+
+      for (let i = 0; i < 14; i++) {
+        particles.push(new Particle(b.x, b.y, b.color.stroke));
+      }
+
+      floatTexts.push(new FloatingText(b.x, b.y - 12, `+${earned}`, b.color.stroke));
+
+      bubbles.splice(index, 1);
+      updateUI();
+    }
+
+    function handleClickOrTap(clientX, clientY) {
+      if (gameState !== 'PLAYING') return;
+
+      let hit = false;
+      // En son eklenen baloncuk en üstte çizildiği için sondan başa tara
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        const dx = clientX - b.x;
+        const dy = clientY - b.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Dokunmatik cihazlar için hafif dokunma toleransı (+14px)
+        if (dist <= Math.max(b.radius + 14, 25)) {
+          popBubble(i);
+          hit = true;
+          break;
+        }
+      }
+
+      if (!hit && combo > 1) {
+        combo = 1;
+        updateUI();
+      }
+    }
+
+    function updateUI() {
+      scoreDisplay.textContent = score;
+      comboDisplay.textContent = `x${combo}`;
+
+      const count = bubbles.length;
+      bubbleCountText.textContent = `${count} / ${MAX_BUBBLES_LIMIT}`;
+
+      const percent = Math.min(100, (count / MAX_BUBBLES_LIMIT) * 100);
+      dangerProgressBar.style.width = `${percent}%`;
+
+      if (percent >= 70) {
+        dangerProgressBar.classList.add('danger-glow');
+      } else {
+        dangerProgressBar.classList.remove('danger-glow');
+      }
+    }
+
+    function triggerGameOver() {
+      gameState = 'GAMEOVER';
+      sound.playGameOver();
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('bubble_high_score_limit50', highScore.toString());
+      }
+
+      finalScore.textContent = score;
+      bestScore.textContent = highScore;
+      gameOverModal.classList.remove('hidden');
+    }
+
+    function resetGame() {
+      score = 0;
+      combo = 1;
+      comboTimer = 0;
+      gameTime = 0;
+      spawnTimer = 0;
+      bubbles = [];
+      particles = [];
+      floatTexts = [];
+      updateUI();
+    }
+
+    function update(dt) {
+      if (gameState !== 'PLAYING') return;
+
+      gameTime += dt;
+
+      // Kombo zaman aşımı kontrolü
+      if (combo > 1) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) {
+          combo = 1;
+          updateUI();
+        }
+      }
+
+      // Kademeli hızlanma: Başlangıçta 2.0 saniye, zamanla 0.45 saniyeye kadar seri hale gelir
+      const currentInterval = Math.max(0.45, 2.0 - (gameTime * 0.024));
+      spawnTimer += dt;
+      if (spawnTimer >= currentInterval) {
+        spawnBubble();
+        spawnTimer = 0;
+        updateUI();
+      }
+
+      // Baloncukların küçülme ve bölünme güncellemeleri
+      const splitList = [];
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const state = bubbles[i].update(dt);
+        if (state === 'SPLIT') {
+          splitList.push(bubbles[i]);
+          bubbles.splice(i, 1);
+        }
+      }
+
+      splitList.forEach(parent => splitBubble(parent));
+
+      // Aşırı yüklenme kontrolü (50 baloncuk limiti)
+      if (bubbles.length >= MAX_BUBBLES_LIMIT) {
+        triggerGameOver();
+        return;
+      }
+
+      particles = particles.filter(p => p.update(dt));
+      floatTexts = floatTexts.filter(ft => ft.update(dt));
+      updateUI();
+    }
+
+    function render() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+
+      for (let i = 0; i < bubbles.length; i++) {
+        bubbles[i].draw(ctx);
+      }
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].draw(ctx);
+      }
+      for (let i = 0; i < floatTexts.length; i++) {
+        floatTexts[i].draw(ctx);
+      }
+    }
+
+    function gameLoop(now) {
+      if (!lastTime) lastTime = now;
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      if (gameState === 'PLAYING') {
+        update(dt);
+      }
+      render();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      sound.init();
+      if (gameState !== 'PLAYING') return;
+      const rect = canvas.getBoundingClientRect();
+      handleClickOrTap(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      sound.init();
+      if (gameState !== 'PLAYING') return;
+      const rect = canvas.getBoundingClientRect();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        handleClickOrTap(t.clientX - rect.left, t.clientY - rect.top);
+      }
+    }, { passive: true });
+
+    startGameBtn.addEventListener('click', () => {
+      sound.init();
+      resetGame();
+      startModal.classList.add('hidden');
+      gameState = 'PLAYING';
+      lastTime = performance.now();
+      spawnBubble();
+      spawnBubble();
+    });
+
+    restartGameBtn.addEventListener('click', () => {
+      sound.init();
+      gameOverModal.classList.add('hidden');
+      resetGame();
+      gameState = 'PLAYING';
+      lastTime = performance.now();
+      spawnBubble();
+      spawnBubble();
+    });
+
+    soundBtn.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        soundIconOn.classList.remove('hidden');
+        soundIconOff.classList.add('hidden');
+        sound.init();
+      } else {
+        soundIconOn.classList.add('hidden');
+        soundIconOff.classList.remove('hidden');
+      }
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (gameState === 'PLAYING') {
+        gameState = 'PAUSED';
+        pauseBtn.style.color = '#f59e0b';
+      } else if (gameState === 'PAUSED') {
+        gameState = 'PLAYING';
+        pauseBtn.style.color = '';
+        lastTime = performance.now();
+      }
+    });
+
+    window.onload = function() {
+      resizeCanvas();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
